@@ -57,3 +57,26 @@ export async function POST(request: Request) {
 }
 
 function randomBatch() { return Math.random().toString(36).slice(2, 7).toUpperCase(); }
+
+export async function PATCH(request: Request) {
+  if (!authorized(request)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  try {
+    const body = await request.json();
+    const serial = String(body.serial_number ?? "").trim().toUpperCase();
+    const destination = String(body.destination_url ?? "").trim();
+    const parsed = new URL(destination);
+    if (!/^HQR-[A-Z0-9]{5}-\\d{4}$/.test(serial) || parsed.protocol !== "https:") {
+      return NextResponse.json({ error: "Enter a valid card serial and HTTPS destination URL." }, { status: 400 });
+    }
+    const db = createAdminClient();
+    const { data, error } = await db.from("review_cards")
+      .update({ destination_url: parsed.toString(), updated_at: new Date().toISOString() })
+      .eq("serial_number", serial).eq("status", "active")
+      .select("serial_number,destination_url").maybeSingle();
+    if (error) throw error;
+    if (!data) return NextResponse.json({ error: "Active card not found." }, { status: 404 });
+    return NextResponse.json({ success: true, card: data });
+  } catch {
+    return NextResponse.json({ error: "Could not update card destination." }, { status: 400 });
+  }
+}
