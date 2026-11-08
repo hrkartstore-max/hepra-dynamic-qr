@@ -33,6 +33,7 @@ create table if not exists public.scan_events (
   scanned_at timestamptz not null default now()
 );
 
+create index if not exists businesses_owner_id_idx on public.businesses(owner_id);
 create index if not exists review_cards_business_id_idx on public.review_cards(business_id);
 create index if not exists review_cards_slug_idx on public.review_cards(slug);
 create index if not exists scan_events_card_id_scanned_at_idx on public.scan_events(card_id, scanned_at desc);
