@@ -1,23 +1,16 @@
+"use client";
+
 import Link from "next/link";
-import { ArrowLeft, KeyRound } from "lucide-react";
+import { useState } from "react";
+import { ArrowLeft, KeyRound, CheckCircle2 } from "lucide-react";
 
 export default function ActivatePage() {
-  return (
-    <main className="min-h-screen px-5 py-10">
-      <div className="mx-auto max-w-xl">
-        <Link href="/" className="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-white"><ArrowLeft size={16}/> Back home</Link>
-        <div className="mt-10 rounded-3xl border border-white/10 bg-slate-900/80 p-7 shadow-2xl sm:p-9">
-          <div className="grid h-12 w-12 place-items-center rounded-2xl bg-violet-600/20 text-violet-300"><KeyRound/></div>
-          <h1 className="mt-6 text-3xl font-black">Activate your QR card</h1>
-          <p className="mt-3 leading-7 text-slate-400">Enter the serial number and activation code supplied with your HEPRA card. Card activation will be enabled after the database is connected.</p>
-          <div className="mt-8 space-y-4">
-            <label className="block text-sm font-medium text-slate-300">Card serial number<input disabled placeholder="e.g. HEPRA-BATCH-0001" className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-slate-500 outline-none"/></label>
-            <label className="block text-sm font-medium text-slate-300">Activation code<input disabled placeholder="Enter your 10-character code" className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-slate-500 outline-none"/></label>
-            <button disabled className="w-full cursor-not-allowed rounded-xl bg-violet-600/40 px-5 py-4 font-bold text-white/60">Activation coming in the next build</button>
-          </div>
-          <p className="mt-5 text-xs leading-5 text-slate-500">Never share your activation code publicly. HEPRA support will never ask for your full password.</p>
-        </div>
-      </div>
-    </main>
-  );
+  const [form,setForm]=useState({serial_number:"",activation_code:"",business_name:"",contact_email:"",destination_url:""});
+  const [busy,setBusy]=useState(false);
+  const [error,setError]=useState("");
+  const [redirect,setRedirect]=useState("");
+  function change(e:React.ChangeEvent<HTMLInputElement>){setForm({...form,[e.target.name]:e.target.value});}
+  async function submit(e:React.FormEvent){e.preventDefault();setBusy(true);setError("");try{const response=await fetch("/api/cards/activate",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(form)});const data=await response.json();if(!response.ok)throw new Error(data.error||"Activation failed");setRedirect(data.redirect_url);}catch(e){setError(e instanceof Error?e.message:"Activation failed");}finally{setBusy(false);}}
+  if(redirect)return <main className="min-h-screen px-5 py-16"><section className="mx-auto max-w-xl rounded-3xl border border-white/10 bg-slate-900 p-8 text-center"><CheckCircle2 className="mx-auto h-14 w-14 text-emerald-400"/><h1 className="mt-5 text-3xl font-black">Card activated!</h1><p className="mt-3 text-slate-400">Your permanent QR and NFC destination is ready.</p><p className="mt-5 break-all rounded-xl bg-black/30 p-4 text-sm">{redirect}</p><button onClick={()=>navigator.clipboard.writeText(redirect)} className="mt-4 rounded-xl bg-violet-600 px-5 py-3 font-bold">Copy smart link</button></section></main>;
+  return <main className="min-h-screen px-5 py-10"><div className="mx-auto max-w-xl"><Link href="/" className="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-white"><ArrowLeft size={16}/> Back home</Link><form onSubmit={submit} className="mt-10 rounded-3xl border border-white/10 bg-slate-900/80 p-7 shadow-2xl sm:p-9"><div className="grid h-12 w-12 place-items-center rounded-2xl bg-violet-600/20 text-violet-300"><KeyRound/></div><h1 className="mt-6 text-3xl font-black">Activate your QR card</h1><p className="mt-3 leading-7 text-slate-400">Add your business details and Google review link. Your QR and NFC destination will be permanently linked to this card.</p><div className="mt-7 space-y-4">{[{name:"serial_number",label:"Card serial number",placeholder:"HQR-ABCDE-0001"},{name:"activation_code",label:"One-time activation code",placeholder:"10-character code"},{name:"business_name",label:"Business name",placeholder:"Your business name"},{name:"contact_email",label:"Contact email (optional)",placeholder:"you@example.com"},{name:"destination_url",label:"Google review URL",placeholder:"https://g.page/r/.../review"}].map(field=><label key={field.name} className="block text-sm font-medium text-slate-300">{field.label}<input required={field.name!=="contact_email"} name={field.name} value={form[field.name as keyof typeof form]} onChange={change} placeholder={field.placeholder} className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 outline-none focus:border-violet-500"/></label>)}</div>{error&&<p className="mt-4 text-sm text-rose-300">{error}</p>}<button disabled={busy} className="mt-6 w-full rounded-xl bg-violet-600 px-5 py-4 font-bold disabled:opacity-50">{busy?"Activating…":"Activate card"}</button></form></div></main>;
 }
