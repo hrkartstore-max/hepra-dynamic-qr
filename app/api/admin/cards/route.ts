@@ -14,14 +14,14 @@ export async function GET(request: Request) {
   if (!authorized(request)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
     const db = createAdminClient();
-    const [{ data: cards, error }, { count: active }, { count: total }] = await Promise.all([
+    const [{ data: cards, error }, { count: active }, { count: total }, { count: scans }] = await Promise.all([
       db.from("review_cards").select("id,serial_number,slug,status,destination_url,created_at,activated_at").order("created_at", { ascending: false }).limit(100),
       db.from("review_cards").select("*", { count: "exact", head: true }).eq("status", "active"),
-      db.from("review_cards").select("*", { count: "exact", head: true })
+      db.from("review_cards").select("*", { count: "exact", head: true }),
+      db.from("scan_events").select("*", { count: "exact", head: true })
     ]);
     if (error) throw error;
-    const { data: scans } = await db.from("scan_events").select("id", { count: "exact", head: true });
-    return NextResponse.json({ cards: cards ?? [], stats: { total: total ?? 0, active: active ?? 0, scans: scans?.length ?? 0 } });
+    return NextResponse.json({ cards: cards ?? [], stats: { total: total ?? 0, active: active ?? 0, scans: scans ?? 0 } });
   } catch {
     return NextResponse.json({ error: "Could not load card inventory." }, { status: 500 });
   }
@@ -37,22 +37,19 @@ export async function POST(request: Request) {
     }
     const db = createAdminClient();
     const batch = randomBatch();
-    const rows = Array.from({ length: quantity }, (_, i) => {
-      const code = generateActivationCode();
-      return {
-        serial_number: `HQR-${batch}-${String(i + 1).padStart(4, "0")}`,
-        activation_code_hash: hashActivationCode(code),
-        slug: generateSlug(),
-        destination_url: "https://www.google.com",
-        status: "unactivated"
-      };
-    });
+    const codes = Array.from({ length: quantity }, () => generateActivationCode());
+    const rows = codes.map((code, i) => ({
+      serial_number: `HQR-${batch}-${String(i + 1).padStart(4, "0")}`,
+      activation_code_hash: hashActivationCode(code),
+      slug: generateSlug(),
+      destination_url: "https://www.google.com",
+      status: "unactivated"
+    }));
     const { data, error } = await db.from("review_cards").insert(rows).select("id,serial_number,slug,status");
     if (error || !data) throw error;
     return NextResponse.json({
-      cards: data.map((card, i) => ({ ...card, activation_code: rows[i].activation_code_hash ? codesafe(rows[i], i, quantity, batch) : "" })),
-      // Activation codes are generated again below in a secure in-memory response in the next version.
-      note: "Inventory created. Use the secure card export in the next admin release."
+      cards: data.map((card, i) => ({ ...card, activation_code: codes[i] })),
+      warning: "Save this response securely now. Activation codes are shown only once."
     }, { status: 201 });
   } catch {
     return NextResponse.json({ error: "Card generation failed. Check database settings." }, { status: 500 });
@@ -60,4 +57,3 @@ export async function POST(request: Request) {
 }
 
 function randomBatch() { return Math.random().toString(36).slice(2, 7).toUpperCase(); }
-function codesafe(_row: { activation_code_hash: string }, _index: number, _quantity: number, _batch: string) { return "••••••••••"; }
