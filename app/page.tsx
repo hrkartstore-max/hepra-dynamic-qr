@@ -13,7 +13,7 @@ export default function Home() {
     <main className="min-h-screen overflow-hidden">
       <nav className="mx-auto flex max-w-7xl items-center justify-between px-6 py-6">
         <Link href="/" className="flex items-center gap-3 font-bold tracking-tight"><span className="grid h-10 w-10 place-items-center rounded-xl bg-violet-600"><QrCode size={22}/></span> HEPRA <span className="text-violet-400">DYNAMIC QR</span></Link>
-        <Link href="/activate" className="rounded-full border border-white/15 px-5 py-2.5 text-sm text-slate-200 hover:bg-white/5">Activate a card</Link>
+        <div className="flex items-center gap-3"><Link href="/activate" className="rounded-full border border-white/15 px-5 py-2.5 text-sm text-slate-200 hover:bg-white/5">Activate a card</Link><Link href="/admin" className="rounded-full bg-violet-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-violet-500">Admin</Link></div>
       </nav>
       <section className="mx-auto grid max-w-7xl items-center gap-14 px-6 pb-24 pt-16 md:grid-cols-2 md:pt-24">
         <div>
